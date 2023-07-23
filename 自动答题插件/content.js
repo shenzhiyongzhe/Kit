@@ -5,33 +5,40 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     );
 
     // 收集页面题目
-    let questions = [];
+    let primative_questions = [];
+    let process_questions = [];
     for (let i = 2; i < questions_container.length; i++) {
-      questions.push({
-        title: questions_container[i].childNodes[0].innerText,
+      let title = questions_container[i].childNodes[0].innerText;
+      let options_container =
+        questions_container[i].childNodes[1].childNodes[0].childNodes[0]
+          .childNodes;
+      primative_questions.push({ title, options: options_container });
+      let options = [];
+      for (let i = 0; i < options_container.length; i++) {
+        options.push(options_container[i].innerText);
+      }
 
-        options:
-          questions_container[i].childNodes[1].childNodes[0].childNodes[0]
-            .childNodes,
-      });
+      process_questions.push({ title, options });
     }
-    console.log(questions);
+    console.log(process_questions, "原生", primative_questions);
 
-    //向后台提交题目
+    //向后台提交题目并返回正确答案
     chrome.runtime.sendMessage(
       {
         origin: "content",
-        questions,
+        questions: process_questions,
       },
       (res) => {
+        console.log("the right answer is", res);
         // 点击正确的答案;
         for (let i = 0; i < res.length; i++) {
           // console.log(questions[i].options);
-          if (i.length === 1)
-            questions[i].options[res[i][0]].childNodes[0].click();
+          if (typeof res[i] === "number" && res[i] >= 0)
+            primative_questions[i].options[res[i]].childNodes[0].click();
+          else if (res[i] == -1) console.log(res[i]);
           else {
-            for (const j of res[i]) {
-              questions[i].options[res[i][j]].childNodes[0].click();
+            for (let j = 0; j < res[i].length; j++) {
+              primative_questions[i].options[res[i][j]].childNodes[0].click();
             }
           }
         }
@@ -39,7 +46,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         //提交
         // const question_commit = document.querySelector("button");
         // console.log(questions_container, questions, question_commit);
-        console.log("the right answer is", res);
         //收到答题消息，返回 “收到” 消息
         sendResponse({ finish: "已经回答完毕" });
       }
